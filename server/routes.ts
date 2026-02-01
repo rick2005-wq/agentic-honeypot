@@ -15,6 +15,23 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
+  // --- API Key Middleware ---
+  app.use(async (req, res, next) => {
+    // Only protect the /api/check-scam endpoint for the hackathon reviewer
+    if (req.path === api.scam.check.path) {
+      const authHeader = req.headers['authorization'];
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ message: "API Key required" });
+      }
+      const key = authHeader.split(' ')[1];
+      const keys = await db.select().from(apiKey).where(eq(apiKey.key, key));
+      if (keys.length === 0) {
+        return res.status(401).json({ message: "Invalid API Key" });
+      }
+    }
+    next();
+  });
+
   // --- Mock Scammer Interaction Endpoint ---
   app.post(api.scam.check.path, async (req, res) => {
     try {
@@ -182,6 +199,14 @@ export async function registerRoutes(
 
 // Seed function
 export async function seedDatabase() {
+  const existingKeys = await db.select().from(apiKey);
+  if (existingKeys.length === 0) {
+    await db.insert(apiKey).values({
+      key: "guvi-hackathon-2026-secret-key",
+      description: "HCL Hackathon Reviewer Key"
+    });
+  }
+
   const conversations = await storage.getConversations();
   if (conversations.length === 0) {
     // 1. Crypto Scam
