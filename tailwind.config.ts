@@ -11,6 +11,15 @@ export default {
         sm: ".1875rem", /* 3px */
       },
       colors: {
+        // Custom Terminal Colors
+        terminal: {
+          green: "#00ff41",
+          dim: "#008F11",
+          bg: "#0D0208",
+          card: "#1a1a1a",
+          border: "#333333",
+          accent: "#ff003c"
+        },
         // Flat / base colors (regular buttons)
         background: "hsl(var(--background) / <alpha-value>)",
         foreground: "hsl(var(--foreground) / <alpha-value>)",
@@ -83,9 +92,10 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["var(--font-sans)"],
+        mono: ["'JetBrains Mono'", "'Fira Code'", "monospace", "var(--font-mono)"],
+        sans: ["'Inter'", "sans-serif", "var(--font-sans)"],
+        display: ["'Orbitron'", "sans-serif"],
         serif: ["var(--font-serif)"],
-        mono: ["var(--font-mono)"],
       },
       keyframes: {
         "accordion-down": {
