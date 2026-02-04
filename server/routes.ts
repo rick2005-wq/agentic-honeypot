@@ -1,3 +1,5 @@
+
+import { mockOpenAIResponse } from "./lib/openaiMock"; // mock AI
 import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
@@ -8,15 +10,80 @@ import { db } from "./db";
 import { apiKey } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
+import { Parser } from "json2csv";
+
+
+
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
 });
 
 export async function registerRoutes(
+
+  
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+
+
+  // Add this inside registerRoutes, before `return httpServer;`
+app.get("/export-csv", async (_req, res) => {
+  try {
+    // Get all conversations
+    const conversations = await storage.getConversations();
+
+    // Flatten conversations to include only necessary fields for CSV
+    const csvData = conversations.map(c => ({
+      id: c.id,
+      title: c.title,
+      scamDetected: c.scamDetected,
+      scamScore: c.scamScore,
+      scamType: c.scamType || "",
+      status: c.status,
+      createdAt: c.createdAt?.toISOString() || "",
+    }));
+
+    // Convert to CSV
+    const parser = new Parser();
+    const csv = parser.parse(csvData);
+
+    // Send CSV as download
+    res.header("Content-Type", "text/csv");
+    res.attachment("conversations.csv");
+    res.send(csv);
+  } catch (err) {
+    console.error("CSV Export Error:", err);
+    res.status(500).send("Failed to generate CSV");
+  }
+});
+
+
+
+// --- TEST OPENAI ROUTE ---
+app.get("/test-openai", async (_req, res) => {
+  try {
+    let outputText;
+
+    if (process.env.NODE_ENV === "development") {
+      // Use mock AI in dev
+      const mock = await mockOpenAIResponse("Say 'OpenAI connected successfully'", "");
+      outputText = mock.reply; // from mock response
+    } else {
+      // Use real OpenAI in production
+      const response = await openai.responses.create({
+        model: "gpt-4o-mini",
+        input: "Say 'OpenAI connected successfully'",
+      });
+      outputText = response.output_text;
+    }
+
+    res.json({ ok: true, output: outputText });
+  } catch (err: any) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 
   // --- API Key Middleware ---
   app.use(async (req, res, next) => {
@@ -248,3 +315,6 @@ export async function seedDatabase() {
     await storage.createMessage({ conversationId: c3.id, role: "agent", content: "I think you have the wrong number." });
   }
 }
+
+
+
